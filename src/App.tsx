@@ -67,6 +67,72 @@ export default function App() {
   const handleBlend = async () => {
     setAppState('blending');
     try {
+      // Build a rich context string from seeds + tags for the AI
+      const seedDescriptions = seeds.map(s => {
+        let desc = s.title;
+        if (s.releaseDate) desc += ` (${s.releaseDate})`;
+        if (s.director) desc += ` directed by ${s.director}`;
+        return desc;
+      });
+
+      const tagDescriptions = activeTags.map(t => {
+        if (t.type === 'genre') return `${t.name} genre`;
+        if (t.type === 'language') return `${t.name} language movies`;
+        if (t.type === 'person') return `featuring ${t.name}`;
+        return t.name;
+      });
+
+      const parts: string[] = [];
+      if (seedDescriptions.length > 0) {
+        parts.push(`I love these movies: ${seedDescriptions.join(', ')}.`);
+      }
+      if (tagDescriptions.length > 0) {
+        parts.push(`I want: ${tagDescriptions.join(', ')}.`);
+      }
+      parts.push('Recommend movies that perfectly blend these vibes. Do NOT recommend any of the movies I already mentioned.');
+
+      const blendQuery = parts.join(' ');
+
+      // Ask the AI for recommendations
+      const { getAIRecommendations } = await import('./services/ai');
+      const aiResult = await getAIRecommendations(blendQuery);
+
+      if (aiResult && aiResult.recommendations.length > 0) {
+        // Look up each AI recommendation on TMDB for posters
+        const { searchMoviesList } = await import('./services/tmdb');
+        const tmdbPromises = aiResult.recommendations.map(async (rec) => {
+          try {
+            const results = await searchMoviesList(rec.title);
+            if (results.length > 0) {
+              const best = results[0];
+              return {
+                id: best.id.toString(),
+                title: best.title || rec.title,
+                posterUrl: (best.posterUrl || '').replace('/w92', '/w500') || 'https://picsum.photos/seed/fallback/600/900',
+                matchPercentage: rec.matchScore,
+                matchReason: rec.matchReason,
+                type: 'movie' as const,
+                releaseDate: best.releaseDate || (rec.year?.toString() ?? ''),
+                overview: '',
+              } as MediaItem;
+            }
+            return null;
+          } catch {
+            return null;
+          }
+        });
+
+        const mediaItems = (await Promise.all(tmdbPromises)).filter((m): m is MediaItem => m !== null);
+        const seedIds = seeds.map(s => s.id?.toString());
+        const filtered = mediaItems.filter(m => !seedIds.includes(m.id));
+
+        if (filtered.length > 0) {
+          setResults(filtered);
+          return;
+        }
+      }
+
+      // Fallback: use old TMDB discover if AI fails
       const movies = await discoverMovies(seeds, activeTags);
       const seedIds = seeds.map(s => s.id?.toString());
       const filtered = movies.filter(m => !seedIds.includes(m.id));
@@ -76,6 +142,11 @@ export default function App() {
       alert(`Error: ${err.message}`);
       setAppState('input');
     }
+  };
+
+  const handleAISearch = async (aiResults: MediaItem[]) => {
+    setAppState('blending');
+    setResults(aiResults);
   };
 
   const handleHomeClick = () => {
@@ -88,7 +159,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#050505] text-[#EDEDED] font-sans selection:bg-white/20 overflow-x-hidden relative">
       <Header onHomeClick={handleHomeClick} />
-      
+
       <main className="relative z-10 flex flex-col min-h-screen pt-20 pb-24">
         <AnimatePresence mode="wait">
           {appState === 'input' && (
@@ -98,10 +169,11 @@ export default function App() {
                 <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#050505] to-transparent z-20" />
               </div>
               <VibeMixer activeTags={activeTags} setActiveTags={setActiveTags} />
-              <VibeBlender 
+              <VibeBlender
                 seeds={seeds} setSeeds={setSeeds}
                 activeTags={activeTags} setActiveTags={setActiveTags}
                 onBlend={handleBlend}
+                onAISearch={handleAISearch}
               />
               <TrendingSection movies={trendingMovies} onMovieClick={setSelectedMovie} />
             </motion.div>
@@ -109,22 +181,22 @@ export default function App() {
 
           {appState === 'blending' && (
             <div key="blending">
-              <BlendAnimation 
-                seeds={seeds} 
-                onComplete={() => setAppState('results')} 
+              <BlendAnimation
+                seeds={seeds}
+                onComplete={() => setAppState('results')}
               />
             </div>
           )}
 
           {appState === 'results' && results.length > 0 && (
-            <motion.div 
+            <motion.div
               key="results"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="w-full flex flex-col"
             >
               <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-                <button 
+                <button
                   onClick={() => setAppState('input')}
                   className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-colors flex items-center gap-2 w-fit"
                 >
@@ -136,7 +208,7 @@ export default function App() {
           )}
 
           {appState === 'results' && results.length === 0 && (
-            <motion.div 
+            <motion.div
               key="no-results"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -144,8 +216,8 @@ export default function App() {
             >
               <h2 className="text-4xl font-bold text-white tracking-tight">No matches found.</h2>
               <p className="text-white/50 text-lg">Try blending different vibes or movies.</p>
-              <button 
-                onClick={() => setAppState('input')} 
+              <button
+                onClick={() => setAppState('input')}
                 className="px-8 py-4 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform shadow-[0_8px_30px_rgba(255,255,255,0.12)] text-lg"
               >
                 Go Back
@@ -157,9 +229,9 @@ export default function App() {
 
       <AnimatePresence>
         {selectedMovie && (
-          <MovieModal 
-            movie={selectedMovie} 
-            onClose={() => setSelectedMovie(null)} 
+          <MovieModal
+            movie={selectedMovie}
+            onClose={() => setSelectedMovie(null)}
             onMovieSelect={setSelectedMovie}
             onPersonSelect={(person) => {
               setSelectedMovie(null);

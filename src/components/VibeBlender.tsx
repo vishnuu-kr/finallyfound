@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Plus, Sparkles, Dna, Film, Trash2, User, Hash } from 'lucide-react';
+import { Search, X, Plus, Sparkles, Dna, Film, Trash2, User, Hash, Zap } from 'lucide-react';
 import { Seed } from '../App';
-import { searchMovie, getMovieDetails, searchKeyword, TMDBTag, searchMulti } from '../services/tmdb';
-import { parseSearchIntent } from '../services/ai';
+import { searchMovie, getMovieDetails, searchKeyword, TMDBTag, searchMulti, searchMoviesList } from '../services/tmdb';
+import { getAIRecommendations } from '../services/ai';
+import { MediaItem } from './MediaCard';
 
 interface VibeBlenderProps {
   seeds: Seed[];
@@ -11,6 +12,7 @@ interface VibeBlenderProps {
   activeTags: TMDBTag[];
   setActiveTags: (tags: TMDBTag[]) => void;
   onBlend: () => void;
+  onAISearch: (results: MediaItem[]) => void;
 }
 
 const MOODS = [
@@ -43,7 +45,7 @@ const GENRES = [
 ];
 
 export default function VibeBlender({
-  seeds, setSeeds, activeTags, setActiveTags, onBlend
+  seeds, setSeeds, activeTags, setActiveTags, onBlend, onAISearch
 }: VibeBlenderProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -109,36 +111,48 @@ export default function VibeBlender({
 
     setIsExtracting(true);
 
-    // Try AI for natural language intent first
+    // ─── AI-FIRST SEARCH: GPT OSS is the brain ───
     try {
-      const intent = await parseSearchIntent(query);
-      if (intent && intent.isNaturalLanguage) {
-        let nextTags = [...activeTags];
-        let added = false;
-
-        if (intent.language && !nextTags.find(t => t.id === intent.language!.id && t.type === 'language')) {
-          nextTags.push({ id: intent.language.id, name: intent.language.name, type: 'language' });
-          added = true;
-        }
-        if (intent.genres && intent.genres.length > 0) {
-          intent.genres.forEach(g => {
-            if (!nextTags.find(t => t.id === g.id && t.type === 'genre')) {
-              nextTags.push({ id: g.id, name: g.name, type: 'genre' });
-              added = true;
+      const aiResult = await getAIRecommendations(query);
+      if (aiResult && aiResult.recommendations.length > 0) {
+        // Look up each AI recommendation on TMDB to get posters & metadata
+        const tmdbPromises = aiResult.recommendations.map(async (rec) => {
+          try {
+            const searchQuery = rec.year ? `${rec.title}` : rec.title;
+            const results = await searchMoviesList(searchQuery);
+            if (results.length > 0) {
+              const bestMatch = results[0];
+              return {
+                id: bestMatch.id.toString(),
+                title: bestMatch.title || rec.title,
+                posterUrl: (bestMatch.posterUrl || '').replace('/w92', '/w500') || 'https://picsum.photos/seed/fallback/600/900',
+                matchPercentage: rec.matchScore,
+                matchReason: rec.matchReason,
+                type: 'movie' as const,
+                releaseDate: bestMatch.releaseDate || (rec.year?.toString() ?? ''),
+                overview: '',
+              } as MediaItem;
             }
-          });
-        }
+            // Fallback: no TMDB match, skip
+            return null;
+          } catch {
+            return null;
+          }
+        });
 
-        if (added) {
-          setActiveTags(nextTags);
+        const mediaItems = (await Promise.all(tmdbPromises)).filter((m): m is MediaItem => m !== null);
+
+        if (mediaItems.length > 0) {
           setQuery('');
           setSuggestions([]);
           setIsExtracting(false);
+          onAISearch(mediaItems);
           return;
         }
       }
     } catch (err) {
-      console.error("AI Parse Error:", err);
+      console.error('AI Search Error:', err);
+      // Fall through to manual search below
     }
 
     if (suggestions.length > 0) {
