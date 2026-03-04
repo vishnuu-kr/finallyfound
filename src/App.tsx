@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import posthog from 'posthog-js';
 import Header from './components/Header';
 import VibeBlender from './components/VibeBlender';
 import VibeMixer from './components/VibeMixer';
@@ -69,6 +70,12 @@ export default function App() {
   const handleBlend = async () => {
     setBlendReady(false);
     setAppState('blending');
+    posthog.capture('blend_started', {
+      seed_count: seeds.length,
+      tag_count: activeTags.length,
+      seeds: seeds.map(s => s.title),
+      tags: activeTags.map(t => t.name),
+    });
     try {
       // Build a rich context string from seeds + tags for the AI
       const seedDescriptions = seeds.map(s => {
@@ -140,6 +147,7 @@ export default function App() {
         if (filtered.length > 0) {
           setResults(filtered);
           setBlendReady(true);
+          posthog.capture('blend_results', { result_count: filtered.length });
           return;
         }
       }
@@ -152,18 +160,26 @@ export default function App() {
       setBlendReady(true);
     } catch (err: any) {
       console.error(err);
+      posthog.capture('blend_error', { error: err?.message || 'unknown' });
       setBlendReady(true);
       // Don't alert on timeout, just show whatever we have
     }
   };
 
   const handleAISearch = async (aiResults: MediaItem[]) => {
+    posthog.capture('ai_search', { result_count: aiResults.length });
     setResults(aiResults);
     setBlendReady(true);
     setAppState('blending');
   };
 
+  const handleMovieClick = (movie: MediaItem) => {
+    posthog.capture('movie_clicked', { movie_id: movie.id, movie_title: movie.title });
+    setSelectedMovie(movie);
+  };
+
   const handleHomeClick = () => {
+    posthog.capture('home_clicked');
     setAppState('input');
     setSeeds([]);
     setActiveTags([]);
@@ -189,7 +205,7 @@ export default function App() {
                 onBlend={handleBlend}
                 onAISearch={handleAISearch}
               />
-              <TrendingSection movies={trendingMovies} onMovieClick={setSelectedMovie} />
+              <TrendingSection movies={trendingMovies} onMovieClick={handleMovieClick} />
             </motion.div>
           )}
 
@@ -222,7 +238,7 @@ export default function App() {
                   ← Refine Blend
                 </button>
               </div>
-              <InfiniteGrid results={results} onMovieClick={setSelectedMovie} />
+              <InfiniteGrid results={results} onMovieClick={handleMovieClick} />
             </motion.div>
           )}
 
