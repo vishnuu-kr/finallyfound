@@ -64,7 +64,10 @@ export default function App() {
     }
   }, []);
 
+  const [blendReady, setBlendReady] = useState(false);
+
   const handleBlend = async () => {
+    setBlendReady(false);
     setAppState('blending');
     try {
       // Build a rich context string from seeds + tags for the AI
@@ -75,26 +78,34 @@ export default function App() {
         return desc;
       });
 
-      const tagDescriptions = activeTags.map(t => {
+      // Build a structured CineMaster query from seeds + tags
+      const { getAIRecommendations, buildCineMasterQuery } = await import('./services/ai');
+
+      const firstSeed = seeds[0];
+      const personTags = activeTags.filter(t => t.type === 'person').map(t => t.name);
+      const vibeTags = activeTags.filter(t => t.type !== 'person').map(t => {
         if (t.type === 'genre') return `${t.name} genre`;
         if (t.type === 'language') return `${t.name} language movies`;
-        if (t.type === 'person') return `featuring ${t.name}`;
         return t.name;
       });
 
-      const parts: string[] = [];
-      if (seedDescriptions.length > 0) {
-        parts.push(`I love these movies: ${seedDescriptions.join(', ')}.`);
+      // Add extra seed info as vibes
+      if (seedDescriptions.length > 1) {
+        vibeTags.push(`similar to ${seedDescriptions.slice(1).join(', ')}`);
       }
-      if (tagDescriptions.length > 0) {
-        parts.push(`I want: ${tagDescriptions.join(', ')}.`);
-      }
-      parts.push('Recommend movies that perfectly blend these vibes. Do NOT recommend any of the movies I already mentioned.');
 
-      const blendQuery = parts.join(' ');
+      const blendQuery = buildCineMasterQuery({
+        selectedMovie: firstSeed?.title,
+        year: firstSeed?.releaseDate ? parseInt(firstSeed.releaseDate) : undefined,
+        castOrDirector: personTags.length > 0
+          ? `featuring ${personTags.join(', ')}`
+          : firstSeed?.director
+            ? `directed by ${firstSeed.director}`
+            : undefined,
+        vibes: vibeTags.length > 0 ? vibeTags : undefined,
+      });
 
       // Ask the AI for recommendations
-      const { getAIRecommendations } = await import('./services/ai');
       const aiResult = await getAIRecommendations(blendQuery);
 
       if (aiResult && aiResult.recommendations.length > 0) {
@@ -128,6 +139,7 @@ export default function App() {
 
         if (filtered.length > 0) {
           setResults(filtered);
+          setBlendReady(true);
           return;
         }
       }
@@ -137,16 +149,18 @@ export default function App() {
       const seedIds = seeds.map(s => s.id?.toString());
       const filtered = movies.filter(m => !seedIds.includes(m.id));
       setResults(filtered);
+      setBlendReady(true);
     } catch (err: any) {
       console.error(err);
-      alert(`Error: ${err.message}`);
-      setAppState('input');
+      setBlendReady(true);
+      // Don't alert on timeout, just show whatever we have
     }
   };
 
   const handleAISearch = async (aiResults: MediaItem[]) => {
-    setAppState('blending');
     setResults(aiResults);
+    setBlendReady(true);
+    setAppState('blending');
   };
 
   const handleHomeClick = () => {
@@ -183,7 +197,12 @@ export default function App() {
             <div key="blending">
               <BlendAnimation
                 seeds={seeds}
-                onComplete={() => setAppState('results')}
+                onComplete={() => {
+                  if (blendReady) {
+                    setAppState('results');
+                  }
+                }}
+                waitForResults={blendReady}
               />
             </div>
           )}

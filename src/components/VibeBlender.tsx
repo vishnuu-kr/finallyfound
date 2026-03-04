@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, Plus, Sparkles, Dna, Film, Trash2, User, Hash, Zap } from 'lucide-react';
 import { Seed } from '../App';
 import { searchMovie, getMovieDetails, searchKeyword, TMDBTag, searchMulti, searchMoviesList } from '../services/tmdb';
-import { getAIRecommendations } from '../services/ai';
+import { getAIRecommendations, buildCineMasterQuery } from '../services/ai';
 import { MediaItem } from './MediaCard';
 
 interface VibeBlenderProps {
@@ -111,9 +111,10 @@ export default function VibeBlender({
 
     setIsExtracting(true);
 
-    // ─── AI-FIRST SEARCH: GPT OSS is the brain ───
+    // ─── AI-FIRST SEARCH: CineMaster is the brain ───
     try {
-      const aiResult = await getAIRecommendations(query);
+      const cineMasterQuery = buildCineMasterQuery({ freeText: query });
+      const aiResult = await getAIRecommendations(cineMasterQuery);
       if (aiResult && aiResult.recommendations.length > 0) {
         // Look up each AI recommendation on TMDB to get posters & metadata
         const tmdbPromises = aiResult.recommendations.map(async (rec) => {

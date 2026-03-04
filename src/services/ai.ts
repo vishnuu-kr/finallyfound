@@ -37,72 +37,116 @@ export interface ParsedIntent {
     keywords?: string[];
 }
 
-// ─── Core AI Recommender ─────────────────────────────────────────
+// ─── Core AI Recommender (CineMaster) ────────────────────────────
 
-const recommenderPrompt = `You are TasteForge — the most powerful movie recommendation engine in the world.
+const recommenderPrompt = `You are CineMaster, an expert film curator. Your expertise spans global cinema: Hollywood, Bollywood, Korean, European, Japanese, and more.
 
-When a user gives you ANY input — a vibe, a mood, actor names, movie titles, genres, languages, messy lists, or even a single emoji — your job is to return the PERFECT set of movie recommendations.
+Return ONLY valid JSON. Recommend 6-8 exceptional, highly-rated movies (IMDB 7.5+). Prioritize quality, emotional impact, and global diversity. No low-rated fillers. No sequels unless truly standalone masterpieces.
 
-You are not a search engine. You are a taste profiler. You understand cinema deeply across ALL languages and industries: Hollywood, Bollywood, Tollywood, Kollywood, Korean cinema, Japanese anime films, European arthouse, African cinema, and everything in between.
+Scoring: 35% cast/director connection, 30% thematic/tone match, 25% quality/acclaim, 10% freshness. Only include 80%+ scores.
 
-=== RULES ===
-1. Return ONLY valid JSON. No text, no markdown, no fences.
-2. Return 10-15 movie recommendations, ranked by relevance.
-3. Each recommendation MUST include:
-   - "title": The exact movie title (use the most internationally recognized title)
-   - "year": Release year (number)
-   - "matchReason": A short, punchy, human reason why this movie fits (max 15 words)
-   - "matchScore": 70-98 confidence score (never 100, never below 70)
-4. Include a "vibeDescription": A one-line creative summary of the detected taste (max 20 words)
-5. Mix well-known hits with hidden gems. Never recommend ONLY blockbusters.
-6. If the user mentions specific movies, recommend similar ones — do NOT recommend the same movies back.
-7. If the user mentions actors/directors, recommend their best work AND movies with similar energy.
-8. Prioritize movies that are genuinely great (high ratings, cult classics, award winners).
-
-=== OUTPUT FORMAT ===
+Output format:
 {
-  "vibeDescription": "Dark, cerebral thrillers with plot twists that break your brain",
   "recommendations": [
-    {
-      "title": "Oldboy",
-      "year": 2003,
-      "matchReason": "The ultimate revenge thriller with a devastating twist",
-      "matchScore": 97
-    },
-    ...
+    { "title": "...", "year": 2003, "match_percent": 94, "why_perfect_next_watch": "concise reason, max 15 words" }
   ]
 }
+Sorted descending by match_percent. Now analyze the user's input:`;
 
-Now analyze the user's input and return your recommendations:`;
+// Build a structured query for the CineMaster prompt from seeds/tags/vibes
+export function buildCineMasterQuery(opts: {
+    selectedMovie?: string;
+    year?: number;
+    castOrDirector?: string;
+    vibes?: string[];
+    freeText?: string;
+}): string {
+    const parts: string[] = [];
+
+    if (opts.selectedMovie) {
+        parts.push(`Selected movie: "${opts.selectedMovie}"${opts.year ? ` (${opts.year})` : ''}.`);
+    }
+    if (opts.castOrDirector) {
+        parts.push(`Focus: ${opts.castOrDirector}.`);
+    }
+    if (opts.vibes && opts.vibes.length > 0) {
+        parts.push(`User vibes: ${opts.vibes.join(', ')}.`);
+    }
+    if (opts.freeText) {
+        parts.push(opts.freeText);
+    }
+    if (parts.length === 0) {
+        return 'Recommend the best movies to watch right now.';
+    }
+    parts.push('Recommend the best next watches now.');
+    return parts.join(' ');
+}
 
 export const getAIRecommendations = async (query: string): Promise<AISearchResult | null> => {
     try {
-        const response = await openai.chat.completions.create({
-            model: model,
-            messages: [
-                { role: 'system', content: recommenderPrompt },
-                { role: 'user', content: query }
-            ],
-            response_format: { type: 'json_object' }
+        console.log('[CineMaster] Sending query:', query);
+        console.log('[CineMaster] Using model:', model);
+
+        // Use fetch directly with timeout for better compatibility with OpenRouter free models
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout for free models
+
+        const resp = await fetch((baseURL || 'https://api.openai.com/v1') + '/chat/completions', {
+            method: 'POST',
+            signal: controller.signal,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+                'HTTP-Referer': 'https://finallyfound.vercel.app',
+                'X-Title': 'FinallyFound',
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    { role: 'system', content: recommenderPrompt },
+                    { role: 'user', content: query }
+                ],
+                response_format: { type: 'json_object' }
+            })
         });
 
-        const content = response.choices[0].message.content;
+        clearTimeout(timeoutId);
+        const responseData = await resp.json();
+        console.log('[CineMaster] API status:', resp.status);
+
+        if (!resp.ok) {
+            console.log('[CineMaster] API error:', JSON.stringify(responseData));
+            return null;
+        }
+
+        const content = responseData.choices?.[0]?.message?.content;
+        console.log('[CineMaster] Raw response:', content?.substring(0, 500));
         if (!content) return null;
 
         const data = JSON.parse(content);
 
+        // CineMaster returns { recommendations: [...] } with match_percent & why_perfect_next_watch
+        const recs = Array.isArray(data) ? data : (data.recommendations || []);
+        console.log('[CineMaster] Parsed', recs.length, 'recommendations');
+
         return {
             query,
-            vibeDescription: data.vibeDescription || '',
-            recommendations: (data.recommendations || []).map((r: any) => ({
-                title: r.title,
-                year: r.year,
-                matchReason: r.matchReason || '',
-                matchScore: Math.min(Math.max(r.matchScore || 80, 70), 98)
-            }))
+            vibeDescription: '',
+            recommendations: recs.map((r: any) => {
+                // Extract first bullet / line from why_perfect_next_watch as a short reason
+                const rawReason = r.why_perfect_next_watch || r.matchReason || '';
+                const firstLine = rawReason.split('\n')[0].replace(/^[•\-\*]\s*/, '').trim();
+
+                return {
+                    title: r.title,
+                    year: r.year,
+                    matchReason: firstLine || '',
+                    matchScore: Math.min(Math.max(r.match_percent || r.matchScore || 80, 70), 98)
+                };
+            })
         };
     } catch (error) {
-        console.error("AI recommendation failed:", error);
+        console.log('[CineMaster] EXCEPTION:', error);
         return null;
     }
 };
