@@ -14,6 +14,11 @@ if (posthogKey) {
     person_profiles: 'identified_only',
     capture_pageview: true,
     capture_pageleave: true,
+    scroll_root_selector: ['#root'],
+    autocapture: true,
+    loaded: (ph) => {
+      ph.capture('$pageview');
+    },
   });
 }
 
