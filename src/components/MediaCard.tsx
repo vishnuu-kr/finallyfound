@@ -1,5 +1,6 @@
-import { motion } from 'motion/react';
-import { Play } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Play, ChevronDown, Sparkles } from 'lucide-react';
 
 export interface MediaItem {
   id: string;
@@ -20,6 +21,13 @@ interface MediaCardProps {
 }
 
 export default function MediaCard({ item, onClick }: MediaCardProps) {
+  const [reasonExpanded, setReasonExpanded] = useState(false);
+
+  const toggleReason = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setReasonExpanded(prev => !prev);
+  };
+
   return (
     <motion.div
       whileHover={{ scale: 1.04, y: -5 }}
@@ -46,11 +54,43 @@ export default function MediaCard({ item, onClick }: MediaCardProps) {
       {/* Text Content */}
       <div className="flex flex-col px-2 mt-1">
         <h3 className="text-lg font-bold leading-tight line-clamp-1 text-white/90 group-hover:text-white transition-colors">{item.title}</h3>
+
+        {/* "Why this match?" expandable accordion */}
         {item.matchReason && (
-          <p className="text-sm text-white/50 line-clamp-1 mt-0.5 font-medium italic">
-            {item.matchReason}
-          </p>
+          <div className="mt-1">
+            <button
+              onClick={toggleReason}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white/40 hover:text-white/70 transition-colors py-0.5"
+            >
+              <Sparkles className="w-3 h-3" />
+              Why this match?
+              <motion.span
+                animate={{ rotate: reasonExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="inline-flex"
+              >
+                <ChevronDown className="w-3 h-3" />
+              </motion.span>
+            </button>
+            <AnimatePresence>
+              {reasonExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <p className="text-sm text-white/60 mt-1 font-medium italic leading-relaxed pr-1">
+                    {item.matchReason}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         )}
+
+        {/* Fallback tags when no AI reason */}
         {!item.matchReason && item.tags && item.tags.length > 0 && (
           <p className="text-sm text-white/50 line-clamp-1 mt-0.5 font-medium">
             {item.tags.slice(0, 2).join(' • ')}

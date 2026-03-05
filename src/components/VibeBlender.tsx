@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Plus, Sparkles, Dna, Film, Trash2, User, Hash, Zap } from 'lucide-react';
+import { Search, X, Plus, Sparkles, Dna, Film, Trash2, User, Hash, Zap, Shuffle } from 'lucide-react';
 import { Seed } from '../App';
 import { searchMovie, getMovieDetails, searchKeyword, TMDBTag, searchMulti, searchMoviesList } from '../services/tmdb';
 import { getAIRecommendations, buildCineMasterQuery } from '../services/ai';
@@ -309,6 +309,30 @@ export default function VibeBlender({
             )}
           </AnimatePresence>
         </form>
+      </motion.div>
+
+      {/* Feeling Indecisive? — Random Vibe Mixer */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full mt-2 sm:mt-4 px-2">
+        <button
+          onClick={() => {
+            // Pick 3-5 random moods/genres from the combined pool
+            const pool = [...MOODS, ...GENRES];
+            const count = 3 + Math.floor(Math.random() * 3); // 3, 4, or 5
+            const shuffled = pool.sort(() => Math.random() - 0.5);
+            const picked = shuffled.slice(0, count);
+            // Deduplicate with existing tags, then set
+            const newTags = picked.filter(p => !activeTags.some(t => t.id === p.id));
+            setActiveTags([
+              ...activeTags.filter(t => !picked.some(p => p.id === t.id)),
+              ...newTags.map(p => ({ id: p.id, name: p.name, type: p.type as any }))
+            ]);
+          }}
+          className="w-full flex items-center justify-center gap-2.5 px-6 py-3 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-orange-500/20 hover:from-purple-500/30 hover:via-pink-500/30 hover:to-orange-500/30 border border-white/10 hover:border-white/25 rounded-2xl transition-all duration-300 group"
+        >
+          <Shuffle className="w-4 h-4 text-purple-300 group-hover:text-white transition-colors" />
+          <span className="text-sm font-semibold text-white/70 group-hover:text-white transition-colors">Feeling Indecisive? Random Mix</span>
+          <span className="text-xs text-white/40 hidden sm:inline">— picks 3–5 vibes for you</span>
+        </button>
       </motion.div>
 
       {/* Quick Filters - iOS Horizontal Scroll Style */}
