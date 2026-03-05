@@ -327,7 +327,7 @@ export default function VibeBlender({
               ...newTags.map(p => ({ id: p.id, name: p.name, type: p.type as any }))
             ]);
           }}
-          className="w-full flex items-center justify-center gap-2.5 px-6 py-3 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-orange-500/20 hover:from-purple-500/30 hover:via-pink-500/30 hover:to-orange-500/30 border border-white/10 hover:border-white/25 rounded-2xl transition-all duration-300 group"
+          className="w-full flex items-center justify-center gap-2.5 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 rounded-2xl transition-all duration-300 group"
         >
           <Shuffle className="w-4 h-4 text-purple-300 group-hover:text-white transition-colors" />
           <span className="text-sm font-semibold text-white/70 group-hover:text-white transition-colors">Feeling Indecisive? Random Mix</span>
