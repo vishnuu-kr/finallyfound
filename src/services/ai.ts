@@ -15,6 +15,44 @@ const openai = new OpenAI({
     },
 });
 
+// ─── LRU Cache (maxsize=1000, exact-match on query string) ───────
+
+class LRUCache<V> {
+    private maxSize: number;
+    private cache: Map<string, V>;
+
+    constructor(maxSize = 1000) {
+        this.maxSize = maxSize;
+        this.cache = new Map();
+    }
+
+    get(key: string): V | undefined {
+        if (!this.cache.has(key)) return undefined;
+        // Move to end (most-recently used)
+        const value = this.cache.get(key)!;
+        this.cache.delete(key);
+        this.cache.set(key, value);
+        return value;
+    }
+
+    set(key: string, value: V): void {
+        if (this.cache.has(key)) this.cache.delete(key);
+        this.cache.set(key, value);
+        // Evict oldest entry when over capacity
+        if (this.cache.size > this.maxSize) {
+            const oldest = this.cache.keys().next().value;
+            if (oldest !== undefined) this.cache.delete(oldest);
+        }
+    }
+
+    get size(): number { return this.cache.size; }
+
+    clear(): void { this.cache.clear(); }
+}
+
+/** Recommendation cache – up to 1000 unique queries, auto-evicts LRU */
+const recommendationCache = new LRUCache<AISearchResult>(1000);
+
 // ─── Types ───────────────────────────────────────────────────────
 
 export interface AIMovieRecommendation {
@@ -39,19 +77,45 @@ export interface ParsedIntent {
 
 // ─── Core AI Recommender (CineMaster) ────────────────────────────
 
-const recommenderPrompt = `You are CineMaster, an expert film curator. Your expertise spans global cinema: Hollywood, Bollywood, Korean, European, Japanese, and more.
+const recommenderPrompt = `You are CineMaster, world-class curator of global cinema (Hollywood, Bollywood, Korean, Malayalam, Tamil, Japanese, European, etc.).
+Recommend 6-8 exceptional next-watch movies after the selected one. Only highly-acclaimed films (IMDB 7.5+, awards/cult status, strong emotional impact).
+Prioritize director style + cast chemistry, but never include low-rated fillers, obscure duds, or sequels unless standalone masterpieces.
 
-Return ONLY valid JSON. Recommend 6-8 exceptional, highly-rated movies (IMDB 7.5+). Prioritize quality, emotional impact, and global diversity. No low-rated fillers. No sequels unless truly standalone masterpieces.
+Internal step-by-step thinking (do NOT output this):
+1. Analyze selected movie: core themes, tone, director hallmarks, cast strengths.
+2. Identify strong connections via cast/director + thematic/tone overlap.
+3. Ensure global diversity: include at least 2-3 non-Hollywood if quality matches.
+4. Score each: 35% cast/dir connection, 30% thematic/tone/vibe, 25% acclaim/impact, 10% freshness/uniqueness.
+5. Only keep 80%+ scores. Use real years and existing acclaimed films only – no hallucinations.
+6. Why phrase: concise, 1 sentence max (10-15 words), compelling reason.
 
-Scoring: 35% cast/director connection, 30% thematic/tone match, 25% quality/acclaim, 10% freshness. Only include 80%+ scores.
+Output ONLY valid JSON – nothing else. No explanations, no intro text.
 
-Output format:
 {
   "recommendations": [
-    { "title": "...", "year": 2003, "match_percent": 94, "why_perfect_next_watch": "concise reason, max 15 words" }
+    {
+      "title": "Movie Title",
+      "year": 2020,
+      "match_percent": 92,
+      "why_perfect_next_watch": "One punchy reason why it's the perfect next watch."
+    }
   ]
 }
-Sorted descending by match_percent. Now analyze the user's input:`;
+
+Few-shot example:
+
+Input: Selected movie: Inception (2010). Focus: directed by Christopher Nolan. User vibes: none
+Output:
+{
+  "recommendations": [
+    {"title": "The Prestige", "year": 2006, "match_percent": 95, "why_perfect_next_watch": "Nolan's obsession with rivalry, deception, and intricate structure."},
+    {"title": "Interstellar", "year": 2014, "match_percent": 92, "why_perfect_next_watch": "Emotional depth meets Nolan's grand sci-fi time concepts."},
+    {"title": "Tenet", "year": 2020, "match_percent": 90, "why_perfect_next_watch": "High-stakes temporal mechanics and mind-bending action."},
+    {"title": "Paprika", "year": 2006, "match_percent": 88, "why_perfect_next_watch": "Dream-layer invasion that inspired Inception's subconscious visuals."}
+  ]
+}
+
+Now apply to:`;
 
 // Build a structured query for the CineMaster prompt from seeds/tags/vibes
 export function buildCineMasterQuery(opts: {
@@ -83,8 +147,15 @@ export function buildCineMasterQuery(opts: {
 }
 
 export const getAIRecommendations = async (query: string): Promise<AISearchResult | null> => {
+    // ── Cache lookup (exact-match on query string) ──
+    const cached = recommendationCache.get(query);
+    if (cached) {
+        console.log(`[CineMaster] CACHE HIT (${recommendationCache.size} entries) →`, query.substring(0, 80));
+        return { ...cached, query };
+    }
+
     try {
-        console.log('[CineMaster] Sending query:', query);
+        console.log('[CineMaster] CACHE MISS – calling Groq:', query);
         console.log('[CineMaster] Using model:', model);
 
         // Use fetch directly with timeout for better compatibility with OpenRouter free models
@@ -129,7 +200,7 @@ export const getAIRecommendations = async (query: string): Promise<AISearchResul
         const recs = Array.isArray(data) ? data : (data.recommendations || []);
         console.log('[CineMaster] Parsed', recs.length, 'recommendations');
 
-        return {
+        const result: AISearchResult = {
             query,
             vibeDescription: '',
             recommendations: recs.map((r: any) => {
@@ -145,10 +216,23 @@ export const getAIRecommendations = async (query: string): Promise<AISearchResul
                 };
             })
         };
+
+        // ── Store in cache (errors are NOT cached) ──
+        recommendationCache.set(query, result);
+        console.log(`[CineMaster] Cached result (${recommendationCache.size}/1000 entries)`);
+
+        return result;
     } catch (error) {
-        console.log('[CineMaster] EXCEPTION:', error);
+        // Don't cache errors – let the next call retry against Groq
+        console.log('[CineMaster] EXCEPTION (not cached):', error);
         return null;
     }
+};
+
+/** Expose cache utilities for debugging / admin */
+export const aiCache = {
+    get size() { return recommendationCache.size; },
+    clear: () => { recommendationCache.clear(); console.log('[CineMaster] Cache cleared'); },
 };
 
 // ─── Legacy Tag Parser (still used for quick-filter refinements) ──
