@@ -54,20 +54,15 @@ export default function VibeMixer({ activeTags, setActiveTags }: VibeMixerProps)
         setActiveTags([...activeTags, mixerTag]);
       }
     }
-    // Auto-scroll to blend section so user sees their selection + Find Blend button
-    setTimeout(() => {
-      const blendBtn = document.querySelector('[data-blend-section]');
-      if (blendBtn) blendBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 150);
   };
 
   return (
-    <section className="w-full max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col items-center gap-3 sm:gap-4">
-      <div className="text-center space-y-1.5 sm:space-y-2">
+    <section className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center gap-4">
+      <div className="text-center space-y-2">
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-3xl sm:text-5xl md:text-6xl font-semibold tracking-tighter text-white"
+          className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tighter text-white"
         >
           Define the vibe.
         </motion.h1>
@@ -93,17 +88,6 @@ export default function VibeMixer({ activeTags, setActiveTags }: VibeMixerProps)
           onToggle={handleTagToggle}
         />
       </motion.div>
-
-      {/* Selected count indicator */}
-      {activeTags.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-xs text-white/40 font-medium tracking-wide mt-2"
-        >
-          {activeTags.length} vibe{activeTags.length > 1 ? 's' : ''} selected — scroll down to blend ↓
-        </motion.div>
-      )}
     </section>
   );
 }

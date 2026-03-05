@@ -8,7 +8,6 @@ export interface MediaItem {
   backdropUrl?: string;
   matchPercentage: number;
   matchReason?: string;   // AI-generated reason for the recommendation
-  isAIPick?: boolean;     // Whether this came from AI recommendation
   tags?: string[];
   type: 'movie';
   overview?: string;
@@ -29,34 +28,26 @@ export default function MediaCard({ item, onClick }: MediaCardProps) {
       className="relative w-full flex flex-col gap-3 cursor-pointer group"
     >
       {/* Poster Image Container */}
-      <div className="relative w-full aspect-[2/3] rounded-[20px] sm:rounded-[24px] overflow-hidden bg-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-white/10">
+      <div className="relative w-full aspect-[2/3] rounded-[24px] overflow-hidden bg-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] border border-white/10">
         <img
           src={item.posterUrl}
           alt={item.title}
           referrerPolicy="no-referrer"
-          loading="lazy"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-500" />
 
-        {/* AI Pick Badge */}
-        {item.isAIPick && (
-          <div className="absolute top-3 left-3 px-2.5 py-1 text-[10px] font-bold rounded-full bg-gradient-to-r from-purple-500/80 to-blue-500/80 backdrop-blur-xl border border-white/20 text-white shadow-md uppercase tracking-wider">
-            ✨ AI Pick
-          </div>
-        )}
-
         {/* Match Badge */}
-        <div className="absolute top-3 right-3 px-2.5 py-1 text-[10px] sm:text-xs font-bold rounded-full bg-black/60 backdrop-blur-xl border border-white/10 text-white shadow-md">
+        <div className="absolute top-3 right-3 px-3 py-1.5 text-xs font-bold rounded-full bg-black/60 backdrop-blur-xl border border-white/10 text-white shadow-md">
           {item.matchPercentage}% Match
         </div>
       </div>
 
       {/* Text Content */}
-      <div className="flex flex-col px-1 sm:px-2 mt-1">
-        <h3 className="text-sm sm:text-lg font-bold leading-tight line-clamp-1 text-white/90 group-hover:text-white transition-colors">{item.title}</h3>
+      <div className="flex flex-col px-2 mt-1">
+        <h3 className="text-lg font-bold leading-tight line-clamp-1 text-white/90 group-hover:text-white transition-colors">{item.title}</h3>
         {item.matchReason && (
-          <p className="text-xs sm:text-sm text-white/50 line-clamp-1 mt-0.5 font-medium italic">
+          <p className="text-sm text-white/50 line-clamp-1 mt-0.5 font-medium italic">
             {item.matchReason}
           </p>
         )}

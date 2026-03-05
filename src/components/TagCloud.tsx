@@ -27,7 +27,7 @@ export default function TagCloud({ tags, selectedTags, onToggle }: TagCloudProps
       variants={container}
       initial="hidden"
       animate="show"
-      className="flex flex-wrap gap-2 sm:gap-3 justify-center"
+      className="flex flex-wrap gap-3 justify-center"
     >
       <AnimatePresence mode="popLayout">
         {tags.map((tag) => {
@@ -43,7 +43,7 @@ export default function TagCloud({ tags, selectedTags, onToggle }: TagCloudProps
               onClick={() => onToggle(tag)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm transition-colors duration-200 border ${
+              className={`px-4 py-2 rounded-full text-sm transition-colors duration-200 border ${
                 isSelected
                   ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.4)]'
                   : 'bg-transparent text-white/70 border-white/20 hover:border-white/50 hover:text-white hover:bg-white/5'

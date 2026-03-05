@@ -17,9 +17,6 @@ export default function InfiniteGrid({ results, onMovieClick }: InfiniteGridProp
   const sortedResults = useMemo(() => {
     return [...results].sort((a, b) => {
       if (sortBy === 'match') {
-        // AI picks always first, then by match %
-        if (a.isAIPick && !b.isAIPick) return -1;
-        if (!a.isAIPick && b.isAIPick) return 1;
         return (b.matchPercentage || 0) - (a.matchPercentage || 0);
       } else {
         const yearA = a.releaseDate ? parseInt(a.releaseDate) : 0;
@@ -30,11 +27,11 @@ export default function InfiniteGrid({ results, onMovieClick }: InfiniteGridProp
   }, [results, sortBy]);
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
+    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white drop-shadow-sm">Your Blend Results</h2>
-          <span className="text-xs sm:text-sm text-white/50 font-medium">{results.length} matches found</span>
+          <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow-sm">Your Blend Results</h2>
+          <span className="text-sm text-white/50 font-medium">{results.length} matches found</span>
         </div>
         
         <div className="relative z-20">
@@ -77,7 +74,7 @@ export default function InfiniteGrid({ results, onMovieClick }: InfiniteGridProp
             },
           },
         }}
-        className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"
       >
         {sortedResults.map((item) => (
           <motion.div
