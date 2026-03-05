@@ -129,6 +129,7 @@ export default function VibeBlender({
                 posterUrl: (bestMatch.posterUrl || '').replace('/w92', '/w500') || 'https://picsum.photos/seed/fallback/600/900',
                 matchPercentage: rec.matchScore,
                 matchReason: rec.matchReason,
+                isAIPick: true,
                 type: 'movie' as const,
                 releaseDate: bestMatch.releaseDate || (rec.year?.toString() ?? ''),
                 overview: '',
@@ -397,9 +398,9 @@ export default function VibeBlender({
         </div>
       )}
 
-      {/* Vibe Pool */}
-      {(seeds.length > 0 || activeTags.length > 0) && (
-        <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-3 sm:gap-4 w-full mt-4 sm:mt-6">
+      {/* Vibe Pool - show when ANY tags are active, even without seeds */}
+      {activeTags.length > 0 && (
+        <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-3 sm:gap-4 w-full mt-4 sm:mt-6" data-blend-section>
           <h2 className="text-sm font-semibold tracking-tight text-white/50 px-2 uppercase">Blend DNA</h2>
 
           <div className="flex flex-wrap gap-2 px-2">
@@ -463,8 +464,21 @@ export default function VibeBlender({
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-[#050505] via-[#050505]/90 to-transparent z-40 flex justify-center pointer-events-none"
+            className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent z-40 flex flex-col items-center gap-2 pointer-events-none"
           >
+            {/* Show active vibes summary above button */}
+            {activeTags.length > 0 && seeds.length === 0 && (
+              <div className="pointer-events-auto flex flex-wrap justify-center gap-1.5 max-w-md">
+                {activeTags.slice(0, 5).map(tag => (
+                  <span key={String(tag.id)} className="px-2.5 py-1 text-xs rounded-full bg-white/10 text-white/70 border border-white/10">
+                    {tag.name}
+                  </span>
+                ))}
+                {activeTags.length > 5 && (
+                  <span className="px-2.5 py-1 text-xs rounded-full bg-white/10 text-white/50">+{activeTags.length - 5} more</span>
+                )}
+              </div>
+            )}
             <button
               onClick={onBlend}
               className="pointer-events-auto w-full max-w-md py-3 sm:py-4 bg-white rounded-full font-bold text-black text-base sm:text-lg tracking-tight hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_0_40px_rgba(255,255,255,0.3)]"

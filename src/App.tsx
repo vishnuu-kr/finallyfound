@@ -129,6 +129,7 @@ export default function App() {
                 posterUrl: (best.posterUrl || '').replace('/w92', '/w500') || 'https://picsum.photos/seed/fallback/600/900',
                 matchPercentage: rec.matchScore,
                 matchReason: rec.matchReason,
+                isAIPick: true,
                 type: 'movie' as const,
                 releaseDate: best.releaseDate || (rec.year?.toString() ?? ''),
                 overview: '',
@@ -230,7 +231,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               className="w-full flex flex-col"
             >
-              <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+              <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-6 sm:pt-8">
                 <button
                   onClick={() => setAppState('input')}
                   className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-colors flex items-center gap-2 w-fit"
@@ -249,8 +250,8 @@ export default function App() {
               animate={{ opacity: 1 }}
               className="w-full flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6"
             >
-              <h2 className="text-4xl font-bold text-white tracking-tight">No matches found.</h2>
-              <p className="text-white/50 text-lg">Try blending different vibes or movies.</p>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">No matches found.</h2>
+              <p className="text-white/50 text-base sm:text-lg">Try blending different vibes or movies.</p>
               <button
                 onClick={() => setAppState('input')}
                 className="px-8 py-4 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform shadow-[0_8px_30px_rgba(255,255,255,0.12)] text-lg"

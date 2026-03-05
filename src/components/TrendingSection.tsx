@@ -10,13 +10,13 @@ export default function TrendingSection({ movies, onMovieClick }: TrendingSectio
   if (!movies || movies.length === 0) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 border-t border-white/5">
-      <h2 className="text-xl font-medium tracking-tight text-white mb-6">Trending</h2>
-      <div className="flex gap-4 overflow-x-auto pb-6 snap-x hide-scrollbar">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 border-t border-white/5">
+      <h2 className="text-lg sm:text-xl font-medium tracking-tight text-white mb-4 sm:mb-6">Trending</h2>
+      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 sm:pb-6 snap-x hide-scrollbar">
         {movies.map((movie, idx) => (
           <div 
             key={`${movie.id}-${idx}`} 
-            className="flex-shrink-0 w-36 sm:w-48 snap-start group cursor-pointer"
+            className="flex-shrink-0 w-28 sm:w-48 snap-start group cursor-pointer"
             onClick={() => onMovieClick(movie)}
           >
             <div className="w-full aspect-[2/3] rounded-[16px] sm:rounded-[24px] overflow-hidden bg-[#111] mb-3 shadow-sm border border-white/10 relative">

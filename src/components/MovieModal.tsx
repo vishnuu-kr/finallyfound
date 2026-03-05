@@ -92,7 +92,7 @@ export default function MovieModal({ movie, onClose, onMovieSelect, onPersonSele
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-8">
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
@@ -101,7 +101,7 @@ export default function MovieModal({ movie, onClose, onMovieSelect, onPersonSele
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-        className="relative w-full max-w-5xl bg-[#0A0A0A] border border-white/10 rounded-[40px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-5xl bg-[#0A0A0A] border border-white/10 sm:rounded-[40px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] flex flex-col max-h-[100vh] sm:max-h-[90vh]"
       >
         <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 flex items-center gap-2 sm:gap-3">
           <button onClick={handleFacebookShare} className="p-2 sm:p-3 bg-black/60 hover:bg-black/80 backdrop-blur-xl border border-white/10 rounded-full text-white transition-colors shadow-sm" title="Share on Facebook">
@@ -139,11 +139,11 @@ export default function MovieModal({ movie, onClose, onMovieSelect, onPersonSele
 
           {/* Info */}
           <div className="px-6 sm:px-12 -mt-16 sm:-mt-24 relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-end gap-6 sm:gap-8 mb-8 sm:mb-10">
-              <img src={movie.posterUrl} alt="Poster" className="w-32 sm:w-48 rounded-[16px] sm:rounded-[24px] shadow-xl border-4 border-[#0A0A0A] mx-auto sm:mx-0" />
-              <div className="flex-1 text-center sm:text-left mt-4 sm:mt-0">
-                <h2 className="text-3xl sm:text-6xl font-extrabold text-white tracking-tight mb-4 drop-shadow-sm">{movie.title}</h2>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-sm sm:text-base font-medium text-white/70 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-8 mb-6 sm:mb-10">
+              <img src={movie.posterUrl} alt="Poster" className="w-28 sm:w-48 rounded-[16px] sm:rounded-[24px] shadow-xl border-4 border-[#0A0A0A] mx-auto sm:mx-0" />
+              <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-2xl sm:text-6xl font-extrabold text-white tracking-tight mb-3 sm:mb-4 drop-shadow-sm">{movie.title}</h2>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-4 text-xs sm:text-base font-medium text-white/70 mb-4 sm:mb-6">
                   <span className="flex items-center gap-1 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/10 text-white shadow-sm"><Star className="w-4 h-4 text-white" /> {movie.matchPercentage}% Match</span>
                   {(details?.releaseYear || movie.releaseDate) && <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 sm:w-5 sm:h-5" /> {details?.releaseYear || movie.releaseDate}</span>}
                   {details?.runtime > 0 && <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 sm:w-5 sm:h-5" /> {formatRuntime(details.runtime)}</span>}
@@ -160,7 +160,7 @@ export default function MovieModal({ movie, onClose, onMovieSelect, onPersonSele
               </div>
             </div>
 
-            <p className="text-lg sm:text-xl text-white/80 leading-relaxed mb-10 sm:mb-12 font-medium">
+            <p className="text-base sm:text-xl text-white/80 leading-relaxed mb-8 sm:mb-12 font-medium">
               {movie.overview}
             </p>
 
